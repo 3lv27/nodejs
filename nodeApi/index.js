@@ -3,15 +3,16 @@
 const http = require('http')
 const url = require('url')
 const StringDecoder = require('string_decoder').StringDecoder
+const config = require('./config')
 
 
-//Init Server
+// Init Server
 const server = http.createServer((req, res) => {
 
-	//Get the URL and parse it
+	// Get the URL and parse it
 	const parsedUrl = url.parse(req.url, true)
 
-	//Get the path
+	// Get the path
 	const path = parsedUrl.pathname
 	const trimmedPath = path.replace(/^\/+|\/+$/g,'')
 
@@ -58,6 +59,7 @@ const server = http.createServer((req, res) => {
 			const payloadString = JSON.stringify(payload)
 
 			// Return the response
+			res.setHeader('Content-Type', 'application/json')
 			res.writeHead(statusCode)
 			res.end(payloadString)
 
@@ -70,9 +72,9 @@ const server = http.createServer((req, res) => {
   
 })
 
-// Start the server listening on port 3000
-server.listen(3000, () => {
-  console.log('Server listening on port 3000')
+// Start the server
+server.listen(config.port, () => {
+  console.log('Server listening on port', config.port, 'in', config.envName, 'mode')
 })
 
 //** Define the handlers
