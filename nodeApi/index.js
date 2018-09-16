@@ -1,20 +1,45 @@
 
 // Dependencies
 const http = require('http')
+const https = require('https')
 const url = require('url')
 const StringDecoder = require('string_decoder').StringDecoder
 const config = require('./config')
+const fs = require('fs')
 
 
-// Init Server
-const server = http.createServer((req, res) => {
+// Instantiate the HTTP server
+const httpServer = http.createServer((req, res) => {
+  unifiedServers(req, res)
+})
 
+// Start the HTTP server
+httpServer.listen(config.httpPort, () => {
+	console.log('> HTTP server listening on port', config.httpPort, 'in', config.envName, 'mode')
+})
+
+// Instantiate the HTTPS server
+let httpsServerOptions = {
+	'key': fs.readFileSync('./https/key.pem'),
+	'cert': fs.readFileSync('./https/cert.pem')
+}
+const httpsServer = https.createServer(httpsServerOptions, (req, res) => {
+	unifiedServers(req, res)
+})
+
+// Start the HTTPS server
+httpsServer.listen(config.httpsPort, () => {
+	console.log('> HTTPS server listening on port', config.httpsPort, 'in', config.envName, 'mode')
+})
+
+// All the server logic for both the http and https servers
+const unifiedServers = function (req, res) {
 	// Get the URL and parse it
 	const parsedUrl = url.parse(req.url, true)
 
 	// Get the path
 	const path = parsedUrl.pathname
-	const trimmedPath = path.replace(/^\/+|\/+$/g,'')
+	const trimmedPath = path.replace(/^\/+|\/+$/g, '')
 
 	// Get the query string as an object
 	const queryStringObject = parsedUrl.query
@@ -50,7 +75,7 @@ const server = http.createServer((req, res) => {
 		//** Route the request to the handler specified in the router
 		chosenHandler(data, (statusCode, payload) => {
 			// Use the status code called back by the handler, or the dafault to 200
-			statusCode = typeof(statusCode) === 'number' ? statusCode : 200
+			statusCode = typeof (statusCode) === 'number' ? statusCode : 200
 
 			// Use the payload called back by the handler, or the dafault to an empty object
 			payload = typeof (payload) === 'object' ? payload : {}
@@ -69,13 +94,7 @@ const server = http.createServer((req, res) => {
 		})
 
 	})
-  
-})
-
-// Start the server
-server.listen(config.port, () => {
-  console.log('Server listening on port', config.port, 'in', config.envName, 'mode')
-})
+}
 
 //** Define the handlers
 let handlers = {}
