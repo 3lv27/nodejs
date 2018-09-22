@@ -6,6 +6,11 @@ const url = require('url')
 const StringDecoder = require('string_decoder').StringDecoder
 const config = require('./config')
 const fs = require('fs')
+const _data = require('./lib/data')
+
+//Testing
+//@todo eliminate
+_data.delete('test', 'newFile', (err, data) => console.log('> Error:', err))
 
 
 // Instantiate the HTTP server
@@ -102,7 +107,6 @@ let handlers = {}
 handlers.ping = function (data, callback) {
 	// Callback a http status code, and a payload object
 	callback(200)
-
 }
 
 // Not found handler
