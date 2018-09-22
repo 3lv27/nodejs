@@ -6,11 +6,6 @@ const url = require('url')
 const StringDecoder = require('string_decoder').StringDecoder
 const config = require('./config')
 const fs = require('fs')
-const _data = require('./lib/data')
-
-//Testing
-//@todo eliminate
-_data.delete('test', 'newFile', (err, data) => console.log('> Error:', err))
 
 
 // Instantiate the HTTP server
