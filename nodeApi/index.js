@@ -6,6 +6,7 @@ const url = require('url')
 const StringDecoder = require('string_decoder').StringDecoder
 const config = require('./config')
 const fs = require('fs')
+const handlers = require('./lib/handlers')
 
 
 // Instantiate the HTTP server
@@ -92,24 +93,11 @@ const unifiedServers = function (req, res) {
 			console.log('Returning this response: ', statusCode, payloadString)
 
 		})
-
 	})
-}
-
-//** Define the handlers
-let handlers = {}
-// Sample handler
-handlers.ping = function (data, callback) {
-	// Callback a http status code, and a payload object
-	callback(200)
-}
-
-// Not found handler
-handlers.notFound = function (data, callback) {
-	callback(404)
 }
 
 // Define a request router
 const router = {
-	'ping': handlers.ping
+	'ping': handlers.ping,
+	'users': handlers.users
 }
