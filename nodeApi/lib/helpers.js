@@ -12,7 +12,7 @@ let helpers = {}
 
 // Create a SHA256 hash
 helpers.hash = str => {
-  if (typeof(str) == 'string' && str.length > 6) {
+  if (typeof(str) == 'string' && str.length >= 6) {
     const hash = crypto.createHmac('sha256', config.hashingSecret).update(str).digest('hex')
     return hash
   } else {
@@ -33,13 +33,14 @@ helpers.parseJsonToObject = str => {
 // Create a string of random alphanumeric characters, of a given length
 helpers.createRandomString = strLength => {
   strLength = typeof(strLength) === 'number' && strLength > 0 ? strLength : false
+  
   if (strLength) {
     // Define all the possible characters that could go into a string
     const possibleCharaters = 'abcdefghijklmnopqrstuvwxyz0123456789'
 
     // Start the final string
     let str = ''
-    for (let i = 1; i < strLength; i++) {
+    for (let i = 0; i < strLength; i++) {
       // Get a random character from the possibleCharacters string
       const randomCharacter = possibleCharaters.charAt(Math.floor(Math.random() * possibleCharaters.length))
 
