@@ -171,9 +171,78 @@ handlers._users.delete = (data, callback) => {
   } else {
     callback(400, {'Error': 'Missing required field'})
   }
+}
 
+// Tokens handler
+handlers.tokens = (data, callback) => {
+  const acceptableMethods = ['get', 'post', 'put', 'delete']
+  if (acceptableMethods.lastIndexOf(data.method) > -1) {
+    handlers._tokens[data.method](data, callback)
+  } else {
+    callback(405)
+  }
+}
+
+// Container for all the tokens methods
+handlers._tokens = {}
+
+// Tokens - post
+// Required data: phone, password
+// Optional data: none
+handlers._tokens.post = (data, callback) => {
+  const phone = typeof (data.payload.phone) === 'string' && data.payload.phone.trim().length === 10 ? data.payload.phone.trim() : false
+  const password = typeof (data.payload.password) === 'string' && data.payload.password.trim().length > 6 ? data.payload.password.trim() : false
+
+  if (phone && password) {
+    // Look up the user who matches the ofund number
+    _data.read('users', phone, (err, userData) => {
+      if (!err && userData) {
+        // Hash the sent password and compare it to the password stored in the user object
+        const hashedPassword = helpers.hash(password)
+        if (hashedPassword === userData.hashedPassword) {
+          // If valid, create a new token with a random name. Set expiration date 1 hour in the future
+          const tokenId = helpers.createRandomString(20)
+          const expires = Date.now() * 1000 * 60 * 60
+          const tokenObject = {
+            phone,
+            id: tokenId,
+            expires
+          }
+
+          // Store the token
+          _data.create('tokens', tokenId, tokenObject, err => {
+            if (!err) {
+              callback(200, tokenObject)
+            } else {
+              callback(500, {'Error': 'Could not create the new token'})
+            }
+          })
+        } else {
+          callback(400, {'Error': 'Password did not match the specified user\'s stored password'})
+        }
+      } else {
+        callback(400, {'Error': 'Could not fund the specified user'})
+      }
+    })
+  } else {
+    callback(400, {'Error': 'Missing required fields'})
+  }
+  
+}
+// Tokens - get
+handlers._tokens.get = (data, callback) => {
 
 }
+// Tokens - put
+handlers._tokens.put = (data, callback) => {
+
+}
+// Tokens - delete
+handlers._tokens.delete = (data, callback) => {
+
+}
+
+
 
 // Ping handler
 handlers.ping = (data, callback) => {
