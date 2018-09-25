@@ -6,6 +6,7 @@
 // Dependencies
 const _data = require('./data')
 const helpers = require('./helpers')
+const config = require('./config')
 
 // Define the handlers
 let handlers = {}
@@ -345,6 +346,95 @@ handlers.tokens.verifyToken = (id, phone, callback) => {
     }
   })
 }
+
+// Checks handler
+handlers.checks = (data, callback) => {
+  const acceptableMethods = ['get', 'post', 'put', 'delete']
+  if (acceptableMethods.lastIndexOf(data.method) > -1) {
+    handlers._checks[data.method](data, callback)
+  } else {
+    callback(405)
+  }
+}
+
+// Container for all the checks methods
+handlers._checks = {}
+
+// Checks - post
+// Required data: protocol, url, method, successCodes, timeoutSeconds
+// Optional data: none
+handlers._checks.post = (data, callback) => {
+  // Validate inputs
+  const protocol = typeof (data.payload.protocol) === 'string' && ['http', 'https'].indexOf(data.payload.protocol) > -1 ? data.payload.protocol: false
+  const url = typeof (data.payload.url) === 'string' && data.payload.url.trim().length > 0 ? data.payload.url.trim() : false
+  const method = typeof (data.payload.method) === 'string' && ['post', 'get', 'put', 'delete'].indexOf(data.payload.method) > -1 ? data.payload.method : false
+  const successCodes = typeof (data.payload.successCodes) === 'object' && data.payload.successCodes instanceof Array && data.payload.successCodes.length > 0 ? data.payload.successCodes : false
+  const timeoutSeconds = typeof (data.payload.timeoutSeconds) === 'number' && data.payload.timeoutSeconds % 1 === 0 && data.payload.timeoutSeconds <= 5 ? data.payload.timeoutSeconds : false
+
+  if (protocol && url && method && successCodes && timeoutSeconds) {
+    // Get the token from the headers
+    const token = typeof(data.headers.token) === 'string' ? data.headers.token : false 
+    // Lookup the user by reading the token
+    _data.read('tokens',token, (err, tokenData) => {
+      if (!err && tokenData) {
+        const userPhone = tokenData.phone
+        //Lookup the userdata
+        _data.read('users', userPhone, (err, userData) => {
+         if (!err && userData) {
+           const userChecks = typeof(userData.checks) === 'object' && userData.checks instanceof Array ? userData.checks : []
+           // Verify that the user has less than the number of max-checks-per-user
+           if (userChecks.length < config.maxChecks) {
+             // Create a random id for the check
+             const checkId = helpers.createRandomString(20)
+
+             // Create the check object, and include the user's phone
+             const checkObject = {
+               id: checkId,
+               userPhone,
+               protocol,
+               url,
+               method,
+               successCodes,
+               timeoutSeconds
+             }
+
+             // Save the object
+             _data.create('checks', checkId, checkObject, err => {
+               if (!err) {
+                 // Add the checkId to the users object
+                 userData.checks = userChecks
+                 userData.checks.push(checkId)
+
+                 // Save the new user data
+                 _data.update('users', userPhone, userData, err => {
+                  if (!err) {
+                    // Return the data about the new check
+                    callback(200, checkObject)
+                  } else {
+                    callback(500, {'Error': 'Could not update the user with the new check'})
+                  }
+                 })
+               } else {
+                 callback(500, {'Error': 'Could not create the new check'})
+               }
+             })
+           } else {
+             callback(400, {'Error': 'The user already have the maximum numbers of checks('+config.maxChecks+')'})
+           }
+         } else {
+           callback(403)
+         }
+       })
+      } else {
+        callback(403)
+      }
+    })
+
+  } else {
+    callback(400, {'Error': 'Missing required imputs or inputs are invalid'})
+  }
+}
+
 
 
 // Ping handler
