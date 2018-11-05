@@ -64,7 +64,85 @@ workers.validateCheckData = checkData => {
 }
 
 // Perform the check, send the checkData and the outcome of the check process to the next step in the process
-workers.performCheck .. //@todo
+workers.performCheck = checkData => {
+  // Prepare the initial check outcome
+  let checkOutcome = {
+    error: false,
+    responseCode: false
+  }
+
+  // Mark that the outcome has not been sent yet
+  let outcomeSent = false
+
+  // Parse the hostname and the path out of the original check data
+  const parsedUrl = url.parse(checkData.protocol+'://'+checkData.url, true)
+  const hostName = parsedUrl.hostname
+  const path = parsedUrl.path // Using path and not "pathname" because we want the query string
+
+
+  // Constructing the request
+  const requestDetails = {
+    protocol: checkData.protocol+':',
+    hostname: hostName,
+    method: checkData.method.toUpperCase(),
+    path: path,
+    timeout: checkData.timeoutSeconds * 1000
+  }
+
+  // Instantiate the request object using either the http or the https module
+  const _moduleToUse = checkData.protocol === 'http' ? http : https
+  const req = _moduleToUse.request(requestDetails, res => {
+    // Grab the status of the sent request
+    const status = res.statusCode
+
+    // Update the checkOutcome and pass the data along
+    checkOutcome.responseCode = status
+    if (!outcomeSent) {
+      workers.processCheckOutcome(checkData, checkOutcome)
+      outcomeSent = true
+    }
+  })
+
+  // Bind to the error event so it doesnt get thrown
+  req.on('error', e => {
+    checkOutcome.error = {
+      error: true,
+      value: e
+    }
+    if (!outcomeSent) {
+      workers.processCheckOutcome(checkData, checkOutcome)
+      outcomeSent = true
+    }
+  })
+
+  // Bind on the timeout event
+  req.on('timeout', e => {
+    checkOutcome.error = {
+      error: true,
+      value: 'timeout'
+    }
+    if (!outcomeSent) {
+      workers.processCheckOutcome(checkData, checkOutcome)
+      outcomeSent = true
+    }
+  })
+
+  // End the request 
+  req.end()
+}
+
+// Process the checkOutcome process the check data as needed, trigger an alert if needed
+//Special logic for acomodating a check that has never been tested before (don't throw an alert on this one)
+workers.processCheckOutcome = (checkData, checkOutcome) => {
+  // Decide if the check is considered up or down
+  const state = !checkOutcome.error && checkOutcome.responseCode && checkData.successCodes.indexOf(checkOutcome.responseCode) > -1 ? 'up' : 'down'
+
+  // Decide if an alert is warranted
+  const alertWarranted = checkData.lastChecked && checkData.state !== state ? true : false
+
+  // Update the checkData
+  //@todo
+}
 
 // Timer to execute the worker process once per minut
 workers.loop = () => {
