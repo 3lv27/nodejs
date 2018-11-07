@@ -56,7 +56,7 @@ workers.validateCheckData = checkData => {
     checkData.url && 
     checkData.method &&
     checkData.successCodes &&
-    checkData.timeoutSecond) {
+    checkData.timeoutSeconds) { 
       workers.performCheck(checkData)
   } else {
     console.log('Error: One of the checks is not properly formatted. Skipping it')
@@ -141,7 +141,35 @@ workers.processCheckOutcome = (checkData, checkOutcome) => {
   const alertWarranted = checkData.lastChecked && checkData.state !== state ? true : false
 
   // Update the checkData
-  //@todo
+  let newCheckData = checkData
+  newCheckData.state = state
+  newCheckData.lastChecked = Date.now()
+
+  // Save the updates
+  _data.update('checks', newCheckData.id, newCheckData, err => {
+    if (!err) {
+      // Send the new check data to the next phase in the process if needed
+      if (alertWarranted) {
+        workers.alertUserToStatusChange(newCheckData)
+      } else {
+        console.log('Check outcome has not changed, no alert needed')
+      }
+    } else {
+      console.log('Error trying to save updates to one of the checks')
+    }
+  })
+}
+
+// Alert the user as to a change in their check status
+workers.alertUserToStatusChange = newCheckData => {
+  const msg = `Alert: Your check for ${newCheckData.method.toUpperCase()} ${newCheckData.protocol}://${newCheckData.url} is currently ${newCheckData.status}`
+  helpers.sendTwilioSms(newCheckData.userPhone, msg, err => {
+    if (!err) {
+      console.log('Succes: User was alerted to a status change in their check, via sms', msg)
+    } else {
+      console.log('Could not send sms alert to user who had a state change in their check')
+    }
+  })
 }
 
 // Timer to execute the worker process once per minut
